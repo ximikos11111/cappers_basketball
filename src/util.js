@@ -9,8 +9,8 @@ export function angDamp(cur, target, rate, dt) {
   return cur + d * (1 - Math.exp(-rate * dt));
 }
 export const C = {
-  bg: '#0d0f1a', gold: '#ffc531', home: '#ff7a1a', away: '#19c3b1',
-  green: '#3ddc6a', red: '#ff4d5e', ink: '#0d0f1a', paper: '#f6f1e3',
+  bg: '#1d1714', gold: '#f5b83d', home: '#2b6c99', away: '#e4472b',
+  green: '#7ed08a', red: '#ff6a4d', ink: '#1d1714', paper: '#f5ecd8',
 };
 export function shade(hex, f) {
   const n = parseInt(hex.slice(1), 16);

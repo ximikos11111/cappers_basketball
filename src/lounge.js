@@ -4,6 +4,7 @@ import { input } from './input.js';
 import { sfx } from './audio.js';
 import { bubbles, prompt, caption, modal, h, esc, screenOpen, view } from './ui.js';
 import { clamp, damp, dist, pick, rand, C, STAT_KEYS, STAT_SHORT, abilityName, abilityDesc, teamRating } from './util.js';
+import { PAL, DISPLAY, toon, part, canvasTex, sun, sign } from './style.js';
 
 const SPOTS = {
   tv: [[-2.6, -5.4, Math.PI], [1.6, -5.7, Math.PI], [4.2, -5.2, Math.PI]],
@@ -19,124 +20,131 @@ const OBST = [ // x0,z0,x1,z1
   [4.0, 1.0, 7.2, 2.8], // pool table
   [-3.6, 1.4, -2.4, 2.6], [-0.6, 3.9, 0.6, 5.1], // high tables
 ];
-function canvasTex(w, hh) {
-  const c = document.createElement('canvas'); c.width = w; c.height = hh;
-  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
-  return { c, x: c.getContext('2d'), t };
-}
-function signMesh(text, w, hgt, color = C.gold, bg = '#141833') {
-  const s = canvasTex(512, Math.round(512 * hgt / w));
-  s.x.fillStyle = bg; s.x.fillRect(0, 0, s.c.width, s.c.height);
-  s.x.fillStyle = color; s.x.textAlign = 'center'; s.x.textBaseline = 'middle';
-  let fs = s.c.height * 0.6; s.x.font = `900 italic ${fs}px "Barlow Condensed", Impact, system-ui`;
-  while (s.x.measureText(text).width > 480 && fs > 10) { fs -= 4; s.x.font = `900 italic ${fs}px "Barlow Condensed", Impact, system-ui`; }
-  s.x.fillText(text, 256, s.c.height / 2 + 2); s.t.needsUpdate = true;
-  return new THREE.Mesh(new THREE.PlaneGeometry(w, hgt), new THREE.MeshBasicMaterial({ map: s.t }));
-}
-
 export class Lounge {
   constructor(G) {
     this.G = G;
     const sc = (this.scene = new THREE.Scene());
     const hour = new Date().getHours();
     this.night = hour < 6 || G.cheats.night;
-    sc.background = new THREE.Color(this.night ? '#05060d' : '#0d0f1a');
-    sc.fog = new THREE.Fog(sc.background.getHex(), 22, 46);
-    this.camera = new THREE.PerspectiveCamera(46, view.w / view.h, 0.1, 80);
-    sc.add(new THREE.HemisphereLight(0xfff0dd, 0x222244, this.night ? 0.6 : 1.8));
-    const dl = new THREE.DirectionalLight(0xffffff, this.night ? 0.5 : 1.3); dl.position.set(4, 10, 8); sc.add(dl);
-    const M = (c, o) => new THREE.MeshLambertMaterial(Object.assign({ color: c }, o || {}));
-    const box = (w, hh, d, mat, x, y, z) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, hh, d), mat); m.position.set(x, y, z); sc.add(m); return m; };
+    const N = this.night;
+    sc.background = new THREE.Color(N ? '#120f16' : '#2b201b');
+    this.camera = new THREE.PerspectiveCamera(46, view.w / view.h, 0.1, 90);
+    sc.add(new THREE.HemisphereLight(N ? 0x8088c0 : 0xfff2dc, N ? 0x20202c : 0xb89878, N ? 0.75 : 1.45));
+    sun(sc, { color: N ? 0x9aa8ff : 0xffe9c8, intensity: N ? 0.9 : 1.75, pos: [5, 15, 9], size: 20, depth: 50 });
+    const M = (c) => toon(c);
+    const box = (w, hh, d, mat, x, y, z, ol = 0) => { const m = part(new THREE.BoxGeometry(w, hh, d), mat, ol); m.position.set(x, y, z); sc.add(m); return m; };
+    const cyl = (r0, r1, hh, mat, x, y, z, ol = 0, sg = 14) => { const m = part(new THREE.CylinderGeometry(r0, r1, hh, sg), mat, ol); m.position.set(x, y, z); sc.add(m); return m; };
 
-    // floor: carpet with a diamond pattern
-    const fl = canvasTex(512, 512);
-    fl.x.fillStyle = '#1a1d38'; fl.x.fillRect(0, 0, 512, 512);
-    for (let i = 0; i < 8; i++) for (let j = 0; j < 8; j++) {
-      fl.x.fillStyle = (i + j) % 2 ? '#22264a' : '#1e2140'; fl.x.save(); fl.x.translate(i * 64 + 32, j * 64 + 32); fl.x.rotate(Math.PI / 4); fl.x.fillRect(-20, -20, 40, 40); fl.x.restore();
-      fl.x.fillStyle = 'rgba(255,197,49,.25)'; fl.x.beginPath(); fl.x.arc(i * 64, j * 64, 3, 0, 7); fl.x.fill();
-    }
-    fl.t.wrapS = fl.t.wrapT = THREE.RepeatWrapping; fl.t.repeat.set(8, 5); fl.t.needsUpdate = true;
-    const floor = new THREE.Mesh(new THREE.PlaneGeometry(36, 18), new THREE.MeshLambertMaterial({ map: fl.t })); floor.rotation.x = -Math.PI / 2; floor.position.set(-2, 0, 0); sc.add(floor);
-    const wallM = M('#252a52'), trimM = M('#3a2a1c'), woodM = M('#7a4a26'), darkM = M('#11132a');
-    box(26, 5, 0.3, wallM, 0, 2.5, -8.15); // back wall
-    box(0.3, 5, 16, wallM, 13.15, 2.5, 0); // right wall
-    box(0.3, 5, 9.8, wallM, -13.15, 2.5, 3.1); // left wall (below the hidden door)
-    box(0.3, 5, 1.2, wallM, -13.15, 2.5, -7.4);
-    box(0.3, 2.2, 1.6, wallM, -13.15, 3.9, -6.0); // above hidden door
-    box(26, 0.25, 0.4, trimM, 0, 0.12, -7.95);
+    // floor: two-tone café tiles with small terracotta diamonds
+    const fl = canvasTex(256, 256);
+    for (let i = 0; i < 2; i++) for (let j = 0; j < 2; j++) { fl.x.fillStyle = (i + j) % 2 ? '#ead9b8' : '#dcc7a0'; fl.x.fillRect(i * 128, j * 128, 128, 128); }
+    fl.x.fillStyle = '#c9623f'; for (const [px, py] of [[0, 0], [128, 0], [0, 128], [128, 128], [256, 0], [0, 256], [256, 256], [256, 128], [128, 256]]) { fl.x.save(); fl.x.translate(px, py); fl.x.rotate(Math.PI / 4); fl.x.fillRect(-13, -13, 26, 26); fl.x.restore(); }
+    fl.x.strokeStyle = 'rgba(90,60,40,.28)'; fl.x.lineWidth = 2; fl.x.strokeRect(0, 0, 128, 128); fl.x.strokeRect(128, 128, 128, 128); fl.x.strokeRect(128, 0, 128, 128); fl.x.strokeRect(0, 128, 128, 128);
+    fl.t.wrapS = fl.t.wrapT = THREE.RepeatWrapping; fl.t.repeat.set(21, 14); fl.t.needsUpdate = true;
+    const floor = new THREE.Mesh(new THREE.PlaneGeometry(42, 28), toon('#ffffff', { map: fl.t })); floor.rotation.x = -Math.PI / 2; floor.position.set(-2, 0, 5.5); floor.receiveShadow = true; sc.add(floor);
+    const rug = new THREE.Mesh(new THREE.CircleGeometry(2.6, 40), toon(PAL.tomato)); rug.rotation.x = -Math.PI / 2; rug.position.set(0, 0.012, 5.6); rug.receiveShadow = true; sc.add(rug);
+    const rug2 = new THREE.Mesh(new THREE.RingGeometry(2.05, 2.25, 40), toon(PAL.paper)); rug2.rotation.x = -Math.PI / 2; rug2.position.set(0, 0.018, 5.6); sc.add(rug2);
+
+    // walls: cream plaster over a green wainscot with a wooden rail
+    const wallM = M(PAL.wall), lowM = M(PAL.wallLow), woodM = M(PAL.wood), darkWood = M(PAL.woodDark), darkM = M('#231a1c');
+    const wall = (w, d, x, z) => { box(w, 7.4, d, wallM, x, 3.7, z); box(w + (d > w ? 0.12 : 0), 1.25, d + (w > d ? 0.12 : 0), lowM, x, 0.625, z); box(w + (d > w ? 0.2 : 0), 0.1, d + (w > d ? 0.2 : 0), darkWood, x, 1.3, z); };
+    wall(26.6, 0.3, 0, -8.15); wall(0.3, 16.3, 13.15, 0); wall(0.3, 9.8, -13.15, 3.1); wall(0.3, 1.2, -13.15, -7.4);
+    box(0.3, 4.6, 1.6, wallM, -13.15, 5.1, -6.0); // above the hidden door
     // hidden rage-quit room
-    box(4, 5, 0.3, darkM, -15, 2.5, -8.15); box(0.3, 5, 4.6, darkM, -17.15, 2.5, -5.9);
-    const curtain = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 2.8), new THREE.MeshLambertMaterial({ color: '#5a1020', transparent: true, opacity: 0.93, side: THREE.DoubleSide }));
+    box(4, 7.4, 0.3, darkM, -15, 3.7, -8.15); box(0.3, 7.4, 4.6, darkM, -17.15, 3.7, -5.9);
+    const curtain = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 2.8), toon('#7a1626', { transparent: true, opacity: 0.95, side: THREE.DoubleSide }));
     curtain.rotation.y = Math.PI / 2; curtain.position.set(-13.0, 1.4, -5.8); sc.add(curtain);
-    const so = signMesh('STAFF ONLY', 1.4, 0.3, '#ff4d5e', '#200a10'); so.rotation.y = Math.PI / 2; so.position.set(-12.95, 3.05, -5.8); sc.add(so);
-    // controller stuck in the wall
+    const so = sign('STAFF ONLY', 1.4, 0.34, { bg: PAL.tomato, fg: PAL.paper }); so.rotation.y = Math.PI / 2; so.position.set(-12.95, 3.05, -5.8); sc.add(so);
     const pad = new THREE.Group();
-    pad.add(new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.28, 0.12), M('#2b2b2b')));
-    for (const s of [-1, 1]) { const g = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.09, 0.3, 8), M('#2b2b2b')); g.position.set(s * 0.22, -0.18, 0); pad.add(g); const st = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 6), M(s < 0 ? '#ff4d5e' : '#19c3b1')); st.position.set(s * 0.12, 0.03, 0.08); pad.add(st); }
+    pad.add(part(new THREE.BoxGeometry(0.5, 0.28, 0.12), '#2b2b2b', 0.015));
+    for (const s of [-1, 1]) { const g = part(new THREE.CylinderGeometry(0.07, 0.09, 0.3, 8), '#2b2b2b', 0.015); g.position.set(s * 0.22, -0.18, 0); pad.add(g); const st = part(new THREE.SphereGeometry(0.04, 8, 6), s < 0 ? PAL.tomato : PAL.teal); st.position.set(s * 0.12, 0.03, 0.08); pad.add(st); }
     pad.position.set(-16.92, 1.7, -5.9); pad.rotation.set(0.4, Math.PI / 2, 0.5); sc.add(pad);
     for (let i = 0; i < 5; i++) { const cr = new THREE.Mesh(new THREE.PlaneGeometry(0.04, rand(0.4, 0.9)), new THREE.MeshBasicMaterial({ color: 0x000000 })); cr.rotation.y = Math.PI / 2; cr.rotation.x = i * 1.25; cr.position.set(-16.98, 1.7, -5.9); sc.add(cr); }
-    const rq = signMesh('RAGE QUIT HALL OF FAME', 2.6, 0.4, '#ff4d5e', '#11132a'); rq.rotation.y = Math.PI / 2; rq.position.set(-16.97, 2.9, -5.9); sc.add(rq);
+    const rq = sign('RAGE QUIT HALL OF FAME', 2.6, 0.44, { bg: '#231a1c', fg: PAL.tomato, border: PAL.tomato }); rq.rotation.y = Math.PI / 2; rq.position.set(-16.97, 2.9, -5.9); sc.add(rq);
     const bulb = new THREE.PointLight(0xff4d5e, 6, 7); bulb.position.set(-15, 3, -5.9); sc.add(bulb);
 
-    // bar
-    box(1.1, 1.1, 7.6, woodM, -10.75, 0.55, 1.3); box(1.5, 0.1, 7.9, M('#2a1a10'), -10.75, 1.14, 1.3);
-    box(0.35, 2.4, 6, M('#2a1a10'), -12.8, 2.2, 1.3);
-    const bottleCols = ['#3ddc6a', '#ffc531', '#ff4d5e', '#19c3b1', '#b06cff', '#ff7a1a'];
-    for (let i = 0; i < 14; i++) { const b = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.08, 0.34, 8), new THREE.MeshLambertMaterial({ color: bottleCols[i % 6], emissive: bottleCols[i % 6], emissiveIntensity: 0.35 })); b.position.set(-12.55, 1.6 + (i % 2) * 0.75, -1.3 + i * 0.4); sc.add(b); }
-    for (const z of [0.2, 2.6, 4.4]) { const st = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.24, 0.08, 12), M('#ff4d5e')); st.position.set(-9.75, 0.7, z + 0.75); sc.add(st); const lg = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.7, 6), M('#888')); lg.position.set(-9.75, 0.35, z + 0.75); sc.add(lg); }
-    const barSign = signMesh('THE VIG', 2.4, 0.6, '#ff4d5e', '#200a10'); barSign.rotation.y = Math.PI / 2; barSign.position.set(-12.6, 3.9, 1.3); sc.add(barSign);
+    // bar: wooden counter, cream top, shelves of bottles, an espresso machine
+    box(1.1, 1.1, 7.6, woodM, -10.75, 0.55, 1.3, 0.025); box(1.5, 0.12, 7.9, M(PAL.paper), -10.75, 1.16, 1.3, 0.025);
+    for (let i = 0; i < 6; i++) box(0.04, 0.9, 0.5, darkWood, -10.18, 0.55, -1.85 + i * 1.26);
+    box(0.4, 2.6, 6.2, darkWood, -12.8, 2.1, 1.3, 0.025);
+    for (const y of [1.55, 2.3]) box(0.5, 0.07, 5.8, M(PAL.paper2), -12.6, y, 1.3);
+    const bottleCols = [PAL.leaf, PAL.mustard, PAL.tomato, PAL.teal, '#8a5fa8', '#d98a3a', PAL.sea];
+    for (let i = 0; i < 16; i++) { const y = 1.59 + (i % 2) * 0.75, z = -1.35 + i * 0.36; cyl(0.075, 0.085, 0.32, M(bottleCols[i % 7]), -12.5, y + 0.16, z, 0.012, 8); cyl(0.03, 0.04, 0.14, M(bottleCols[i % 7]), -12.5, y + 0.39, z, 0, 6); }
+    box(0.5, 0.5, 0.7, M('#c9ced0'), -10.85, 1.47, -1.6, 0.02); box(0.52, 0.12, 0.72, M(PAL.tomato), -10.85, 1.77, -1.6, 0.02); cyl(0.07, 0.05, 0.1, M(PAL.paper), -10.5, 1.27, -1.5, 0.01, 10);
+    for (const z of [0.2, 2.6, 4.4]) { cyl(0.27, 0.27, 0.1, M(PAL.tomato), -9.75, 0.72, z + 0.75, 0.02); cyl(0.04, 0.04, 0.68, M('#59666c'), -9.75, 0.34, z + 0.75, 0, 6); cyl(0.2, 0.22, 0.04, M('#59666c'), -9.75, 0.02, z + 0.75, 0, 10); }
+    const barSign = sign('THE VIG', 2.6, 0.75, { bg: PAL.tomato, fg: PAL.paper, sub: 'KAFENEIO · EST. LAST WEEK' }); barSign.rotation.y = Math.PI / 2; barSign.position.set(-12.58, 4.1, 1.3); sc.add(barSign);
     this.tipBoard = canvasTex(512, 256);
-    const tb = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 1.1), new THREE.MeshBasicMaterial({ map: this.tipBoard.t })); tb.rotation.y = Math.PI / 2; tb.position.set(-12.97, 2.6, 5.9); sc.add(tb);
+    box(0.08, 1.3, 2.4, darkWood, -12.98, 2.6, 5.9, 0.02);
+    const tb = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 1.1), new THREE.MeshBasicMaterial({ map: this.tipBoard.t })); tb.rotation.y = Math.PI / 2; tb.position.set(-12.92, 2.6, 5.9); sc.add(tb);
 
-    // pool table + high tables
-    box(3.2, 0.25, 1.8, M('#1f7a4a'), 5.6, 0.9, 1.9); box(3.4, 0.2, 2.0, woodM, 5.6, 0.76, 1.9);
-    for (const [x, z] of [[4.2, 1.2], [7, 1.2], [4.2, 2.6], [7, 2.6]]) box(0.16, 0.7, 0.16, woodM, x, 0.35, z);
-    const ballCols = ['#fff', '#ffc531', '#ff4d5e', '#111', '#19c3b1'];
-    ballCols.forEach((c, i) => { const b = new THREE.Mesh(new THREE.SphereGeometry(0.07, 10, 8), M(c)); b.position.set(4.8 + i * 0.42, 1.09, 1.6 + (i % 3) * 0.25); sc.add(b); });
-    for (const [x, z] of [[-3, 2], [0, 4.5]]) { const t = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 0.07, 18), woodM); t.position.set(x, 1.1, z); sc.add(t); const l = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.2, 1.1, 8), M('#555')); l.position.set(x, 0.55, z); sc.add(l); }
+    // pool table
+    box(3.4, 0.24, 2.0, woodM, 5.6, 0.86, 1.9, 0.025); box(3.0, 0.06, 1.6, M('#2f8f5b'), 5.6, 0.99, 1.9);
+    for (const [x, z] of [[4.2, 1.2], [7, 1.2], [4.2, 2.6], [7, 2.6]]) box(0.18, 0.76, 0.18, darkWood, x, 0.38, z, 0.02);
+    [PAL.paper, PAL.mustard, PAL.tomato, PAL.ink, PAL.teal].forEach((c, i) => { const b = part(new THREE.SphereGeometry(0.075, 12, 10), c, 0.01); b.position.set(4.8 + i * 0.42, 1.095, 1.6 + (i % 3) * 0.25); sc.add(b); });
+    const cue = part(new THREE.CylinderGeometry(0.018, 0.028, 2.0, 6), PAL.paper2, 0.01); cue.rotation.set(0, 0.5, Math.PI / 2); cue.position.set(5.9, 1.06, 2.35); sc.add(cue);
+    // café tables, one with a backgammon board
+    for (const [x, z] of [[-3, 2], [0, 4.5]]) { cyl(0.62, 0.62, 0.07, M(PAL.paper), x, 1.1, z, 0.025, 22); cyl(0.07, 0.07, 1.06, M('#59666c'), x, 0.55, z, 0, 8); cyl(0.34, 0.38, 0.05, M('#59666c'), x, 0.025, z, 0, 14); cyl(0.07, 0.055, 0.09, M(PAL.paper2), x + 0.3, 1.18, z - 0.15, 0.01, 10); cyl(0.07, 0.055, 0.09, M(PAL.paper2), x - 0.28, 1.18, z + 0.2, 0.01, 10); }
+    const tav = canvasTex(128, 96); tav.x.fillStyle = '#7a4a28'; tav.x.fillRect(0, 0, 128, 96); tav.x.fillStyle = '#c99a5a'; tav.x.fillRect(6, 6, 54, 84); tav.x.fillRect(68, 6, 54, 84);
+    for (let i = 0; i < 12; i++) { const bx = 6 + (i % 6) * 9 + (i % 6 > 2 ? 0 : 0) + (i >= 6 ? 62 : 0); tav.x.fillStyle = i % 2 ? PAL.tomato : PAL.ink; tav.x.beginPath(); tav.x.moveTo(bx, 6); tav.x.lineTo(bx + 9, 6); tav.x.lineTo(bx + 4.5, 40); tav.x.fill(); tav.x.beginPath(); tav.x.moveTo(bx, 90); tav.x.lineTo(bx + 9, 90); tav.x.lineTo(bx + 4.5, 56); tav.x.fill(); } tav.t.needsUpdate = true;
+    const tavli = new THREE.Mesh(new THREE.BoxGeometry(0.56, 0.04, 0.42), [woodM, woodM, toon('#ffffff', { map: tav.t }), woodM, woodM, woodM]); tavli.position.set(0, 1.16, 4.5); tavli.rotation.y = 0.3; tavli.castShadow = true; sc.add(tavli);
+    // pendant lamps
+    for (const [x, z, c] of [[5.6, 1.9, PAL.leaf], [-3, 2, PAL.mustard], [0, 4.5, PAL.mustard], [-10.7, 0, PAL.tomato], [-10.7, 2.8, PAL.tomato]]) {
+      const cord = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 3, 4), new THREE.MeshBasicMaterial({ color: PAL.ink })); cord.position.set(x, 5.1, z); sc.add(cord);
+      const sh = part(new THREE.ConeGeometry(0.42, 0.34, 18, 1, true), toon(c, { side: THREE.DoubleSide }), 0.02); sh.position.set(x, 3.6, z); sc.add(sh);
+      const bl = new THREE.Mesh(new THREE.SphereGeometry(0.11, 10, 8), new THREE.MeshBasicMaterial({ color: '#fff3c4' })); bl.position.set(x, 3.47, z); sc.add(bl);
+      if (N) { const pl = new THREE.PointLight(0xffd9a0, 5, 7); pl.position.set(x, 3.3, z); sc.add(pl); }
+    }
 
     // TV wall
     this.tvs = [];
     [['board', -4.6], ['game', 0], ['you', 4.6]].forEach(([kind, x]) => {
       const tv = canvasTex(640, 360); tv.kind = kind;
-      box(4.3, 2.5, 0.12, M('#05060a'), x, 2.9, -7.93);
-      const m = new THREE.Mesh(new THREE.PlaneGeometry(4.1, 2.3), new THREE.MeshBasicMaterial({ map: tv.t })); m.position.set(x, 2.9, -7.86); sc.add(m);
+      box(4.4, 2.6, 0.16, M(PAL.ink), x, 2.95, -7.93, 0.03);
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(4.1, 2.3), new THREE.MeshBasicMaterial({ map: tv.t })); m.position.set(x, 2.95, -7.84); sc.add(m);
       this.tvs.push(tv);
     });
     this.tvT = 0; this.fake = { a: 14, b: 12, tick: 0 };
+    // pennants over the screens
+    const flagG = new THREE.BufferGeometry(); flagG.setAttribute('position', new THREE.BufferAttribute(new Float32Array([-0.2, 0, 0, 0.2, 0, 0, 0, -0.42, 0]), 3)); flagG.computeVertexNormals();
+    const flagC = [PAL.tomato, PAL.mustard, PAL.teal, PAL.paper, PAL.sea];
+    for (let i = 0; i < 44; i++) { const u = i / 43, f = new THREE.Mesh(flagG, new THREE.MeshBasicMaterial({ color: flagC[i % 5], side: THREE.DoubleSide })); f.position.set(-12.4 + u * 20.4, 4.95 - Math.abs(Math.sin(u * Math.PI * 3)) * 0.28, -7.9); sc.add(f); }
     // framed worst pick
     this.frameDef = pick(G.roster.players.filter((p) => p.worstPick));
     const fr = canvasTex(256, 340);
-    fr.x.fillStyle = C.paper; fr.x.fillRect(0, 0, 256, 340); fr.x.fillStyle = C.ink; fr.x.font = '900 22px system-ui'; fr.x.textAlign = 'center';
-    fr.x.fillText('BET SLIP', 128, 36); fr.x.font = '700 13px monospace'; fr.x.fillText('#000-WORST-EVER', 128, 58);
-    for (let i = 0; i < 9; i++) { fr.x.fillStyle = 'rgba(13,15,26,.45)'; fr.x.fillRect(28, 82 + i * 20, 200 - (i * 37) % 70, 7); }
-    fr.x.strokeStyle = '#d0202f'; fr.x.lineWidth = 6; fr.x.save(); fr.x.translate(128, 280); fr.x.rotate(-0.15); fr.x.strokeRect(-80, -24, 160, 48); fr.x.fillStyle = '#d0202f'; fr.x.font = '900 34px system-ui'; fr.x.fillText('LOSER', 0, 12); fr.x.restore(); fr.t.needsUpdate = true;
-    box(1.5, 1.95, 0.1, M('#c9a227'), -9.6, 2.5, -7.95);
-    const frm = new THREE.Mesh(new THREE.PlaneGeometry(1.3, 1.72), new THREE.MeshBasicMaterial({ map: fr.t })); frm.position.set(-9.6, 2.5, -7.88); sc.add(frm);
-    // tunnel door
-    box(3, 3.6, 0.2, M('#05060a'), 9.4, 1.8, -7.95);
-    const glow = new THREE.Mesh(new THREE.PlaneGeometry(2.5, 3.2), new THREE.MeshBasicMaterial({ color: '#ffb347' })); glow.position.set(9.4, 1.6, -7.84); sc.add(glow); this.glow = glow;
-    const ts = signMesh('TO THE COURT', 3, 0.55, C.ink, C.gold); ts.position.set(9.4, 3.95, -7.83); sc.add(ts);
-    const tl = new THREE.PointLight(0xffb347, 14, 9); tl.position.set(9.4, 2, -6.5); sc.add(tl);
-    // betting window, trophy case, locker room (right wall)
-    box(0.5, 2.6, 3.2, M('#182040'), 12.8, 1.3, -1.6); box(0.2, 1.1, 2.6, new THREE.MeshLambertMaterial({ color: '#9fe8ff', emissive: '#3aa0c0', emissiveIntensity: 0.5 }), 12.5, 1.85, -1.6);
-    const ws = signMesh('BETTING WINDOW', 3, 0.5, C.green, '#0a1a12'); ws.rotation.y = -Math.PI / 2; ws.position.set(12.95, 3.3, -1.6); sc.add(ws);
-    box(0.7, 2.2, 2.2, M('#3a2a1c'), 12.6, 1.1, 3); box(0.5, 1.5, 1.9, new THREE.MeshLambertMaterial({ color: '#ffe9a8', emissive: '#c9a227', emissiveIntensity: 0.4, transparent: true, opacity: 0.5 }), 12.45, 1.3, 3);
-    const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.1, 0.5, 12), new THREE.MeshLambertMaterial({ color: C.gold, emissive: '#7a5a00' })); cup.position.set(12.4, 1.35, 3); sc.add(cup);
-    const tr = signMesh('TROPHY CASE', 2.2, 0.4, C.gold); tr.rotation.y = -Math.PI / 2; tr.position.set(12.95, 2.9, 3); sc.add(tr);
-    box(0.2, 3, 1.8, M('#444b78'), 12.95, 1.5, 6.3);
-    const lk = signMesh('LOCKER ROOM', 2.2, 0.4, '#fff', '#444b78'); lk.rotation.y = -Math.PI / 2; lk.position.set(12.9, 3.35, 6.3); sc.add(lk);
-    // neon strips
-    for (const [x, c] of [[-8, '#ff4d5e'], [8, '#19c3b1']]) { const n = new THREE.Mesh(new THREE.BoxGeometry(9, 0.08, 0.08), new THREE.MeshBasicMaterial({ color: c })); n.position.set(x, 4.7, -7.9); sc.add(n); }
+    fr.x.fillStyle = PAL.paper; fr.x.fillRect(0, 0, 256, 340); fr.x.fillStyle = PAL.ink; fr.x.font = `30px ${DISPLAY}`; fr.x.textAlign = 'center';
+    fr.x.fillText('BET SLIP', 128, 44); fr.x.font = '700 13px monospace'; fr.x.fillText('#000-WORST-EVER', 128, 66);
+    for (let i = 0; i < 9; i++) { fr.x.fillStyle = 'rgba(29,23,20,.4)'; fr.x.fillRect(28, 88 + i * 20, 200 - (i * 37) % 70, 7); }
+    fr.x.strokeStyle = PAL.tomato; fr.x.lineWidth = 6; fr.x.save(); fr.x.translate(128, 284); fr.x.rotate(-0.15); fr.x.strokeRect(-80, -26, 160, 50); fr.x.fillStyle = PAL.tomato; fr.x.font = `38px ${DISPLAY}`; fr.x.fillText('LOSER', 0, 14); fr.x.restore(); fr.t.needsUpdate = true;
+    box(1.56, 2.0, 0.12, M(PAL.mustard), -9.6, 2.9, -7.95, 0.025);
+    const frm = new THREE.Mesh(new THREE.PlaneGeometry(1.3, 1.72), new THREE.MeshBasicMaterial({ map: fr.t })); frm.position.set(-9.6, 2.9, -7.87); sc.add(frm);
+    // doorway out to the court: daylight pouring in
+    box(3.3, 3.9, 0.22, darkWood, 9.4, 1.95, -7.95, 0.03);
+    const glow = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 3.4), new THREE.MeshBasicMaterial({ color: '#ffd9a0' })); glow.position.set(9.4, 1.7, -7.82); sc.add(glow); this.glow = glow;
+    const spill = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 3.2), new THREE.MeshBasicMaterial({ color: '#ffe2b0', transparent: true, opacity: 0.33, depthWrite: false })); spill.rotation.x = -Math.PI / 2; spill.position.set(9.4, 0.02, -6.2); sc.add(spill);
+    const ts = sign('TO THE COURT', 3.2, 0.62, { bg: PAL.mustard }); ts.position.set(9.4, 4.25, -7.82); sc.add(ts);
+    // betting window with a striped awning, trophy cabinet, locker room door (right wall)
+    box(0.6, 2.7, 3.3, M(PAL.teal), 12.75, 1.35, -1.6, 0.025); box(0.2, 1.05, 2.5, toon('#bfe6e2'), 12.42, 1.85, -1.6); box(0.5, 0.1, 3.0, M(PAL.paper), 12.5, 1.25, -1.6, 0.02);
+    const aw = canvasTex(128, 32); for (let i = 0; i < 8; i++) { aw.x.fillStyle = i % 2 ? PAL.paper : PAL.tomato; aw.x.fillRect(i * 16, 0, 16, 32); } aw.t.needsUpdate = true;
+    const awn = new THREE.Mesh(new THREE.PlaneGeometry(3.5, 1.1), toon('#ffffff', { map: aw.t, side: THREE.DoubleSide })); awn.position.set(12.25, 2.95, -1.6); awn.rotation.set(0, -Math.PI / 2, 0); awn.rotateX(0.75); awn.castShadow = true; sc.add(awn);
+    const ws = sign('BETTING WINDOW', 3.2, 0.5, { bg: PAL.paper }); ws.rotation.y = -Math.PI / 2; ws.position.set(12.97, 3.75, -1.6); sc.add(ws);
+    box(0.75, 2.3, 2.3, woodM, 12.6, 1.15, 3, 0.025); box(0.5, 1.5, 1.9, toon('#fff0c2', { transparent: true, opacity: 0.45 }), 12.42, 1.35, 3);
+    const cup = part(new THREE.CylinderGeometry(0.24, 0.1, 0.5, 14), PAL.mustard, 0.015); cup.position.set(12.4, 1.4, 3); sc.add(cup); cyl(0.14, 0.17, 0.08, M(PAL.ink), 12.4, 1.1, 3, 0, 12);
+    const tr = sign('TROPHY CASE', 2.3, 0.44, { bg: PAL.mustard }); tr.rotation.y = -Math.PI / 2; tr.position.set(12.97, 2.95, 3); sc.add(tr);
+    box(0.2, 3.1, 1.8, M(PAL.sea), 12.95, 1.55, 6.3, 0.025); cyl(0.05, 0.05, 0.06, M(PAL.mustard), 12.8, 1.5, 5.7, 0, 8);
+    const lk = sign('LOCKER ROOM', 2.3, 0.44, { bg: PAL.paper }); lk.rotation.y = -Math.PI / 2; lk.position.set(12.9, 3.5, 6.3); sc.add(lk);
+    // posters and plants
+    [['TAIL OR FADE', -6.9, PAL.teal, PAL.paper], ['NO REAL MONEY', 6.9, PAL.paper, PAL.tomato]].forEach(([t, x, bg, fg], i) => { const p = sign(t, 1.9, 0.6, { bg, fg }); p.position.set(x, 4.5, -7.98); p.rotation.z = i ? 0.03 : -0.03; sc.add(p); });
+    const plant = (x, z, s2 = 1) => { cyl(0.34 * s2, 0.26 * s2, 0.6 * s2, M('#c9623f'), x, 0.3 * s2, z, 0.02); for (const [ox, oy, oz, r] of [[0, 1.1, 0, 0.5], [0.3, 0.85, 0.1, 0.36], [-0.28, 0.9, -0.1, 0.38], [0.05, 1.5, -0.05, 0.34]]) { const l = part(new THREE.IcosahedronGeometry(r * s2, 1), '#4c8a52', 0.025); l.position.set(x + ox * s2, oy * s2, z + oz * s2); sc.add(l); } };
+    plant(-12.2, 6.9, 1.1); plant(12.2, -6.9, 1.1); plant(6.9, -7.2, 0.9); plant(-7.4, -7.2, 0.9);
 
     // ---- people
     const youDef = G.you;
     this.me = new Bobble(youDef, { jersey: G.roster.crew.homeColor, number: youDef.number, headScale: G.headScale(youDef) });
     this.me.pos = { x: 0, z: 5.8 }; this.me.speed = 0; sc.add(this.me.group);
-    this.me.setRing(C.gold);
+    this.me.setRing(PAL.mustard);
     this.npcs = [];
     const used = {};
-    const palette = ['#6c5ce7', '#e84393', '#00b894', '#0984e3', '#d63031', '#fdcb6e', '#636e72', '#e17055'];
+    const palette = [PAL.tomato, PAL.mustard, PAL.teal, '#8a5fa8', PAL.leaf, PAL.paper2, '#d9779a', PAL.sea, '#d98a3a'];
     G.roster.players.filter((p) => p !== youDef).forEach((def, i) => {
       let spot = SPOTS[def.spot] ? def.spot : Object.keys(SPOTS)[i % 7];
       used[spot] = used[spot] || 0;
@@ -145,15 +153,15 @@ export class Lounge {
       const b = new Bobble(def, { jersey: palette[i % palette.length], number: def.number, headScale: G.headScale(def) });
       b.pos = { x: s[0], z: s[1] }; b.home = { x: s[0], z: s[1] }; b.baseFace = s[2]; b.face = b.faceTarget = s[2];
       b.kind = spot; b.cool = rand(0, 2); b.laughT = rand(3, 12); b.greeted = false; b.paceDir = 1;
-      const tag = labelSprite(def.name); tag.position.y = 2.75; b.group.add(tag);
+      const tag = labelSprite(def.name); tag.position.y = 2.72; tag.visible = false; b.group.add(tag); b.tag = tag;
       b.group.position.set(b.pos.x, 0, b.pos.z); sc.add(b.group); this.npcs.push(b);
     });
     const bt = G.roster.bartender || { name: 'VIG', look: {}, lines: ['What can I get you?'] };
     bt.id = bt.id || 'bartender'; bt.stats = bt.stats || {};
-    this.bartender = new Bobble(bt, { jersey: '#1c1c1c' });
+    this.bartender = new Bobble(bt, { jersey: PAL.paper, trim: PAL.ink });
     this.bartender.pos = { x: -12.0, z: 1.3 }; this.bartender.face = this.bartender.faceTarget = Math.PI / 2;
     this.bartender.group.position.set(-12.0, 0, 1.3); sc.add(this.bartender.group);
-    const btag = labelSprite(bt.name + ' · BARTENDER', C.gold); btag.position.y = 2.75; this.bartender.group.add(btag);
+    const btag = labelSprite(bt.name + ' · BARTENDER', PAL.ink, PAL.mustard); btag.position.y = 2.75; this.bartender.group.add(btag);
 
     // conversations between people standing together
     this.pairs = [];
@@ -188,41 +196,42 @@ export class Lounge {
     const G = this.G, t = this.tipBoard, x = t.x;
     if (!G.save.tip) G.save.tip = pick(['home', 'away', 'over', 'under']);
     const names = { home: 'TAKE THE FAVORITE', away: 'TAKE THE DOG', over: 'HAMMER THE OVER', under: 'UNDER. TRUST ME.' };
-    x.fillStyle = '#10221a'; x.fillRect(0, 0, 512, 256); x.strokeStyle = '#c9a227'; x.lineWidth = 10; x.strokeRect(5, 5, 502, 246);
-    x.fillStyle = '#fff'; x.textAlign = 'center'; x.font = '900 34px system-ui'; x.fillText("VIG'S TIP OF THE DAY", 256, 70);
-    x.fillStyle = C.gold; x.font = '900 46px system-ui'; x.fillText(names[G.save.tip], 256, 150);
-    x.fillStyle = '#9fb'; x.font = '600 22px system-ui'; x.fillText('(record this year: 3-41)', 256, 205); t.t.needsUpdate = true;
+    x.fillStyle = '#23423c'; x.fillRect(0, 0, 512, 256);
+    x.fillStyle = PAL.paper; x.textAlign = 'center'; x.font = `38px ${DISPLAY}`; x.fillText("VIG'S TIP OF THE DAY", 256, 72);
+    x.fillStyle = PAL.mustard; x.font = `58px ${DISPLAY}`; x.fillText(names[G.save.tip], 256, 152);
+    x.fillStyle = '#bfe0d6'; x.font = '700 22px Figtree, system-ui'; x.fillText('(record this year: 3-41)', 256, 205); t.t.needsUpdate = true;
   }
   drawTVs(force) {
     const G = this.G, R = G.roster, f = this.fake;
     for (const tv of this.tvs) {
-      const x = tv.x; x.fillStyle = '#0a0c1c'; x.fillRect(0, 0, 640, 360);
-      x.textAlign = 'left'; x.fillStyle = C.gold; x.font = '900 30px system-ui';
+      if (!force && tv.kind !== 'game') continue;
+      const x = tv.x; x.fillStyle = '#1c3a35'; x.fillRect(0, 0, 640, 360);
+      x.textAlign = 'left'; x.fillStyle = PAL.mustard; x.font = `38px ${DISPLAY}`;
       if (tv.kind === 'board') {
         if (!force) continue;
-        x.fillText('THE LINE BOARD', 24, 44); x.font = '700 21px monospace';
+        x.fillText('THE LINE BOARD', 24, 48); x.font = `24px ${DISPLAY}`;
         const rated = R.players.map((p) => ({ p, r: teamRating([p]) })).sort((a, b) => b.r - a.r).slice(0, 9);
         const top = rated[0].r;
         rated.forEach(({ p, r }, i) => {
           const odds = Math.round((top - r) * 28) + (i === 0 ? -140 : 110);
-          x.fillStyle = i % 2 ? '#cfd3ea' : '#fff'; x.fillText(p.name.slice(0, 16), 24, 84 + i * 30);
-          x.fillStyle = odds < 0 ? C.green : C.gold; x.textAlign = 'right'; x.fillText((odds > 0 ? '+' : '') + odds, 616, 84 + i * 30); x.textAlign = 'left';
+          x.fillStyle = i % 2 ? '#cfe3d8' : PAL.paper; x.fillText(p.name.slice(0, 16), 24, 86 + i * 30);
+          x.fillStyle = odds < 0 ? '#8fe0a0' : PAL.mustard; x.textAlign = 'right'; x.fillText((odds > 0 ? '+' : '') + odds, 616, 86 + i * 30); x.textAlign = 'left';
         });
       } else if (tv.kind === 'game') {
-        x.fillStyle = '#143d24'; x.fillRect(0, 60, 640, 230);
+        x.fillStyle = '#2f9a92'; x.fillRect(0, 60, 640, 230);
         x.strokeStyle = 'rgba(255,255,255,.5)'; x.lineWidth = 3; x.strokeRect(20, 75, 600, 200); x.beginPath(); x.moveTo(320, 75); x.lineTo(320, 275); x.stroke(); x.beginPath(); x.arc(320, 175, 40, 0, 7); x.stroke();
-        for (let i = 0; i < 4; i++) { x.fillStyle = i < 2 ? C.home : C.away; x.beginPath(); x.arc(320 + Math.sin(f.tick * 0.7 + i * 2) * 240, 175 + Math.cos(f.tick * 0.9 + i * 1.7) * 70, 12, 0, 7); x.fill(); }
-        x.fillStyle = '#fff'; x.font = '900 30px system-ui'; x.fillText(`${R.crew.homeName} ${f.a}`, 24, 42); x.textAlign = 'right'; x.fillText(`${f.b} ${R.crew.awayName}`, 616, 42); x.textAlign = 'center'; x.fillStyle = '#ff4d5e'; x.font = '900 20px system-ui'; x.fillText('● LIVE', 320, 40);
-        x.fillStyle = C.gold; x.fillRect(0, 300, 640, 60); x.fillStyle = C.ink; x.font = '800 24px system-ui'; x.textAlign = 'left';
+        for (let i = 0; i < 4; i++) { x.fillStyle = i < 2 ? PAL.tomato : PAL.paper; x.beginPath(); x.arc(320 + Math.sin(f.tick * 0.7 + i * 2) * 240, 175 + Math.cos(f.tick * 0.9 + i * 1.7) * 70, 12, 0, 7); x.fill(); }
+        x.fillStyle = PAL.paper; x.font = `34px ${DISPLAY}`; x.fillText(`${R.crew.homeName} ${f.a}`, 24, 44); x.textAlign = 'right'; x.fillText(`${f.b} ${R.crew.awayName}`, 616, 42); x.textAlign = 'center'; x.fillStyle = PAL.tomato; x.font = `22px ${DISPLAY}`; x.fillText('● LIVE', 320, 42);
+        x.fillStyle = PAL.mustard; x.fillRect(0, 300, 640, 60); x.fillStyle = PAL.ink; x.font = `26px ${DISPLAY}`; x.textAlign = 'left';
         const tick = R.players.map((p, i) => `${p.name} ${['o2.5 threes', 'u1.5 dunks', 'to talk trash -500', 'o0.5 excuses', 'first bucket +450'][i % 5]}`).join('   ·   ');
         const w = x.measureText(tick).width + 100; x.fillText(tick, 640 - ((f.tick * 60) % (w + 640)), 338);
       } else {
         if (!force) continue;
-        x.fillText('YOUR ACTION', 24, 44); x.fillStyle = '#fff'; x.font = '800 26px system-ui';
+        x.fillText('YOUR ACTION', 24, 48); x.fillStyle = PAL.paper; x.font = `28px ${DISPLAY}`;
         x.fillText(`Bankroll: ${G.save.units.toFixed(1)} units`, 24, 92); x.fillText(`Record: ${G.save.w}-${G.save.l}`, 24, 128);
-        x.font = '700 20px monospace';
-        (G.save.slips || []).slice(-5).reverse().forEach((s, i) => { x.fillStyle = s.net >= 0 ? C.green : C.red; x.fillText(`${s.won ? 'W' : 'L'} ${s.score}  ${s.net >= 0 ? '+' : ''}${s.net.toFixed(1)}u  ${s.grade}`, 24, 176 + i * 32); });
-        if (!(G.save.slips || []).length) { x.fillStyle = '#9aa0c0'; x.fillText('No slips yet. Go play a game.', 24, 176); }
+        x.font = `22px ${DISPLAY}`;
+        (G.save.slips || []).slice(-5).reverse().forEach((s, i) => { x.fillStyle = s.net >= 0 ? '#8fe0a0' : '#ff8f7a'; x.fillText(`${s.won ? 'W' : 'L'} ${s.score}  ${s.net >= 0 ? '+' : ''}${s.net.toFixed(1)}u  ${s.grade}`, 24, 176 + i * 32); });
+        if (!(G.save.slips || []).length) { x.fillStyle = '#bfe0d6'; x.fillText('No slips yet. Go play a game.', 24, 176); }
       }
       tv.t.needsUpdate = true;
     }
@@ -271,6 +280,7 @@ export class Lounge {
     const now = performance.now();
     for (const n of this.npcs) {
       const d = dist(n.pos, me.pos);
+      n.tag.visible = d < 4.6 && this.G.mode !== 'title';
       let speed = 0;
       if (n.kind === 'pacer' && d > 3 && !this.convo) {
         n.pos.x += n.paceDir * 1.3 * dt; speed = 1.3; n.faceTarget = n.paceDir > 0 ? Math.PI / 2 : -Math.PI / 2;
@@ -328,7 +338,7 @@ export class Lounge {
     if (!busy) for (const hs of this.hot) if (Math.hypot(me.pos.x - hs.x, me.pos.z - hs.z) < hs.r) near = hs;
     prompt(near ? `<kbd>E</kbd> ${near.label}` : null);
     if (near && (input.pressed('KeyE') || input.pressed('Enter'))) { sfx('click'); near.act(); }
-    this.glow.material.color.setHSL(0.09, 1, 0.6 + Math.sin(now / 300) * 0.08);
+    this.glow.material.color.setHSL(0.1, 1, 0.8 + Math.sin(now / 400) * 0.04);
 
     // --- TVs
     this.fake.tick += dt; this.tvT -= dt;

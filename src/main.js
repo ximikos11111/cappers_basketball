@@ -25,7 +25,7 @@ async function loadRoster() {
   r.players.forEach((p, i) => {
     p.id = p.id || 'p' + i; p.name = (p.name || p.id).toUpperCase(); p.look = p.look || {};
     p.stats = Object.assign({ shooting: 6, dunking: 6, handles: 6, speed: 7, defense: 6, clutch: 7, trashTalk: 7 }, p.stats || {});
-    p.lines = p.lines && p.lines.length ? p.lines : ['Lock it in.']; p.ability = p.ability || 'lock';
+    p.lines = p.lines && p.lines.length ? p.lines : ['Lock it in.']; p.ability = p.ability || 'lock'; p._jersey = r.crew.homeColor;
   });
   return r;
 }
@@ -90,7 +90,7 @@ G.openMatchup = () => {
     el.innerHTML = `<h1>THE MATCHUP</h1>`;
     const row = h('div', 'teams');
     [0, 1].forEach((t) => {
-      const tm = h('div', 'team', `<h3 style="color:${t ? R.crew.awayColor : R.crew.homeColor}">${esc(t ? R.crew.awayName : R.crew.homeName)}${t ? '' : ' (you)'}</h3>`);
+      const tm = h('div', 'team', `<h3 style="color:${t ? R.crew.awayColor : R.crew.homeColor}">${esc(t ? R.crew.awayName : R.crew.homeName)}${t ? '' : ' · YOU'}</h3>`);
       [0, 1].forEach((i) => { const k = t * 2 + i, s = h('button', 'slot' + (sel === k ? ' sel' : '')); s.type = 'button'; s.appendChild(card(slots[k], true)); if (k === 0) s.appendChild(h('span', 'youtag', 'YOU START WITH THE BALL')); s.addEventListener('click', () => { sel = k; sfx('click'); draw(); }); tm.appendChild(s); });
       row.appendChild(tm); if (!t) row.appendChild(h('div', 'vs', 'VS'));
     });
@@ -152,8 +152,8 @@ G.showSlip = (r) => {
   const cv = document.createElement('canvas'); cv.width = W * 2; cv.height = H * 2; const x = cv.getContext('2d'); x.scale(2, 2);
   const F = (sz, w = 900, fam = 'system-ui, sans-serif') => { x.font = `${w} ${sz}px ${fam}`; };
   x.fillStyle = C.paper; x.fillRect(0, 0, W, H);
-  x.fillStyle = C.bg; for (let i = 0; i < W; i += 24) { x.beginPath(); x.arc(i + 12, 0, 9, 0, 7); x.fill(); x.beginPath(); x.arc(i + 12, H, 9, 0, 7); x.fill(); }
-  x.fillStyle = C.ink; x.textAlign = 'center'; F(46, 900, '"Barlow Condensed", Impact, system-ui'); x.fillText(G.roster.crew.title + ' · THE SLIP', W / 2, 78);
+  x.fillStyle = '#1f8f86'; for (let i = 0; i < W; i += 24) { x.beginPath(); x.arc(i + 12, 0, 9, 0, 7); x.fill(); x.beginPath(); x.arc(i + 12, H, 9, 0, 7); x.fill(); }
+  x.fillStyle = C.ink; x.textAlign = 'center'; F(44, 400, 'Anton, Impact, system-ui'); x.fillText(G.roster.crew.title + ' · THE SLIP', W / 2, 78);
   F(15, 700, 'ui-monospace, monospace'); x.fillText(`SLIP #${String(s.w + s.l).padStart(4, '0')} · ${new Date().toLocaleDateString()}`, W / 2, 104);
   x.setLineDash([6, 6]); x.strokeStyle = C.ink; x.lineWidth = 1.5; x.beginPath(); x.moveTo(40, 124); x.lineTo(W - 40, 124); x.stroke();
   F(30, 900, 'ui-monospace, monospace'); x.fillText(`FINAL  ${r.names[0]} ${r.hs} · ${r.names[1]} ${r.as}`, W / 2, 170);
@@ -175,8 +175,8 @@ G.showSlip = (r) => {
   x.fillText(`PLAYER OF THE GAME: ${r.mvp.name} (${r.mvpPts} pts)`, 48, y + 108);
   // grade stamp
   x.save(); x.translate(W / 2, y + 190); x.rotate(-0.07); const good = r.net > 0 || (r.net === 0 && r.won); x.strokeStyle = x.fillStyle = good ? '#0f8a3c' : '#c21f2f'; x.lineWidth = 6; x.globalAlpha = 0.9;
-  F(44, 900, '"Barlow Condensed", Impact, system-ui'); x.textAlign = 'center'; const gw = x.measureText(r.grade).width + 50; x.strokeRect(-gw / 2, -44, gw, 64); x.fillText(r.grade, 0, 4); x.restore();
-  if (r.badBeat) { x.save(); x.translate(W - 150, 150); x.rotate(0.2); x.strokeStyle = x.fillStyle = '#c21f2f'; x.lineWidth = 5; F(30, 900, '"Barlow Condensed", Impact, system-ui'); x.textAlign = 'center'; x.strokeRect(-90, -30, 180, 44); x.fillText('BAD BEAT', 0, 4); x.restore(); }
+  F(46, 400, 'Anton, Impact, system-ui'); x.textAlign = 'center'; const gw = x.measureText(r.grade).width + 50; x.strokeRect(-gw / 2, -44, gw, 64); x.fillText(r.grade, 0, 4); x.restore();
+  if (r.badBeat) { x.save(); x.translate(W - 150, 150); x.rotate(0.2); x.strokeStyle = x.fillStyle = '#c21f2f'; x.lineWidth = 5; F(32, 400, 'Anton, Impact, system-ui'); x.textAlign = 'center'; x.strokeRect(-90, -30, 180, 44); x.fillText('BAD BEAT', 0, 4); x.restore(); }
   x.fillStyle = '#6a6a7a'; x.textAlign = 'center'; F(13, 600); x.fillText('Units are fake. No real money. The beef is real.', W / 2, H - 34);
 
   const el = h('div', 'slipscreen');
@@ -210,6 +210,8 @@ function pauseMenu() {
 async function boot() {
   const app = document.getElementById('app'), canvas = document.getElementById('gl');
   G.roster = await loadRoster();
+  // signs and jerseys are painted with the display face, so wait for it (briefly)
+  try { await Promise.race([Promise.all([document.fonts.load('40px Anton'), document.fonts.load('700 20px Figtree')]), new Promise((r) => setTimeout(r, 2500))]); } catch (e) { /* fall back to system fonts */ }
   G.you = G.roster.players.find((p) => p.you) || G.roster.players[0];
   const saved = store(SAVE_KEY); G.save.units = G.roster.crew.startingUnits || 10;
   if (saved) Object.assign(G.save, saved);
@@ -219,6 +221,7 @@ async function boot() {
   try { renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' }); }
   catch (e) { document.getElementById('ui').innerHTML = '<div class="screen title"><p class="tag">This browser could not start 3D graphics (WebGL). Try Chrome, Safari or Firefox on a recent phone or laptop.</p></div>'; return; }
   renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+  renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   const resize = () => {
     const r = app.getBoundingClientRect(); view.w = r.width; view.h = r.height; renderer.setSize(r.width, r.height, false);
     for (const m of [G.lounge, G.court]) if (m) { m.camera.aspect = r.width / r.height; m.camera.updateProjectionMatrix(); }
