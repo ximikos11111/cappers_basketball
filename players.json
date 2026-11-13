@@ -1,0 +1,110 @@
+{
+  "_readme": "Edit this file to put your crew in the game. One entry per friend. Stats are 1 to 10 and should add up to 45. Drop a face photo at faces/<id>.png and it is picked up automatically (optional extras: faces/<id>_happy.png, faces/<id>_shock.png, faces/<id>_sad.png). Abilities: lock, sharp, juice, chalk, hedge, tout. Spots in the Lounge: tv, bar, pool, window, pacer.",
+  "crew": {
+    "title": "HOOP LEGENDS",
+    "homeName": "LOCKS",
+    "awayName": "FADES",
+    "homeColor": "#ff7a1a",
+    "awayColor": "#19c3b1",
+    "startingUnits": 10
+  },
+  "bartender": {
+    "name": "VIG",
+    "look": { "skin": "#d9a37a", "hair": "#e8e8e8", "hairStyle": "short", "beard": true },
+    "lines": ["What'll it be? Advice is free. Worth every penny.", "House always wins. I am the house.", "Tip of the day is on the board. Fade at your own risk."]
+  },
+  "players": [
+    {
+      "id": "prof", "name": "THE PROFESSOR", "you": true, "number": 9,
+      "look": { "skin": "#f0c39a", "hair": "#5a3a22", "hairStyle": "short", "glasses": true, "height": 1.0 },
+      "bio": "Shoots threes, refuses to play defense",
+      "stats": { "shooting": 9, "dunking": 2, "handles": 7, "speed": 9, "defense": 2, "clutch": 8, "trashTalk": 8 },
+      "ability": "lock",
+      "lines": ["This line is a gift!", "I ran the numbers. Twice.", "It's not gambling if you're right.", "Hammer it. Trust the model."],
+      "worstPick": "Lost a 12-leg parlay on the very last leg",
+      "beefs": ["unit"], "spot": "tv"
+    },
+    {
+      "id": "unit", "name": "BIG UNIT", "number": 45,
+      "look": { "skin": "#b97a50", "hair": "#1c1310", "hairStyle": "bald", "beard": true, "height": 1.14, "build": 1.2 },
+      "bio": "Dunks on everyone, shoots like a fridge",
+      "stats": { "shooting": 3, "dunking": 10, "handles": 4, "speed": 5, "defense": 9, "clutch": 6, "trashTalk": 8 },
+      "ability": "juice",
+      "lines": ["Five units. No, ten. MAX BET.", "Get that weak stuff outta here!", "Who's guarding me? Nobody? Correct.", "I only bet overs. Life's too short."],
+      "worstPick": "Went max bet on a team that scored 61 points. Total.",
+      "beefs": ["prof", "chalk"], "spot": "bar"
+    },
+    {
+      "id": "chalk", "name": "CHALK", "number": 2,
+      "look": { "skin": "#e8b58a", "hair": "#222222", "hairStyle": "cap", "height": 1.02 },
+      "bio": "Only takes favorites. Solid at everything, great at nothing",
+      "stats": { "shooting": 7, "dunking": 5, "handles": 6, "speed": 6, "defense": 7, "clutch": 8, "trashTalk": 6 },
+      "ability": "chalk",
+      "lines": ["Favorites win. That's why they're favorites.", "Laying the points. Always.", "Minus 900 is basically free money.", "Never met a dog I liked."],
+      "worstPick": "Laid -900 on a sure thing. It was not a sure thing.",
+      "beefs": ["square"], "spot": "pool"
+    },
+    {
+      "id": "square", "name": "SQUARE", "number": 11,
+      "look": { "skin": "#8d5a3b", "hair": "#111111", "hairStyle": "flat", "headband": true, "height": 1.07 },
+      "bio": "Bets with his heart. Plays defense with his whole chest",
+      "stats": { "shooting": 5, "dunking": 7, "handles": 5, "speed": 7, "defense": 8, "clutch": 4, "trashTalk": 9 },
+      "ability": "hedge",
+      "lines": ["My team by a million.", "The public is NEVER wrong. Okay sometimes.", "I saw it on a billboard, it's a lock.", "Same game parlay, 14 legs, feeling good."],
+      "worstPick": "Bet his own team to win the title. In the preseason. Every year.",
+      "beefs": ["chalk", "sharpie"], "spot": "pool"
+    },
+    {
+      "id": "sharpie", "name": "SHARPIE", "number": 7,
+      "look": { "skin": "#f3d2b3", "hair": "#c9a227", "hairStyle": "afro", "height": 0.94 },
+      "bio": "Tiny, shifty, sees the play before it happens",
+      "stats": { "shooting": 8, "dunking": 3, "handles": 9, "speed": 8, "defense": 5, "clutch": 7, "trashTalk": 5 },
+      "ability": "sharp",
+      "lines": ["I got that number on Tuesday.", "Closing line value, baby.", "You're betting it NOW? Yikes.", "I don't sweat games. I sweat numbers."],
+      "worstPick": "Got the best number of his life. Still lost by 40.",
+      "beefs": ["square", "tout"], "spot": "tv"
+    },
+    {
+      "id": "tout", "name": "THE TOUT", "number": 1,
+      "look": { "skin": "#c98e62", "hair": "#2b1a10", "hairStyle": "short", "glasses": true, "beard": true, "height": 1.0 },
+      "bio": "All talk, all the time, 100 percent guaranteed",
+      "stats": { "shooting": 6, "dunking": 4, "handles": 8, "speed": 7, "defense": 3, "clutch": 7, "trashTalk": 10 },
+      "ability": "tout",
+      "lines": ["WHALE PLAY OF THE CENTURY, link in bio.", "I'm 47 and 2 this month. Don't check.", "Guaranteed winner or the next one's free!", "Fade me? FADE ME?!"],
+      "worstPick": "Sold a 'lock of the year'. Three times. In one week. All lost.",
+      "beefs": ["sharpie"], "spot": "bar"
+    },
+    {
+      "id": "steam", "name": "STEAM", "number": 23,
+      "look": { "skin": "#6f4630", "hair": "#0e0e0e", "hairStyle": "flat", "height": 1.09 },
+      "bio": "Fastest man in the building, moves like the line",
+      "stats": { "shooting": 4, "dunking": 9, "handles": 6, "speed": 10, "defense": 6, "clutch": 5, "trashTalk": 5 },
+      "ability": "juice", "abilityName": "LINE MOVER",
+      "lines": ["Line's moving. So am I.", "Blink and it's minus seven.", "Catch me? You can't even catch the number."],
+      "worstPick": "Chased steam into a trap game. The trap was for him.",
+      "beefs": ["late"], "spot": "pacer"
+    },
+    {
+      "id": "late", "name": "LATE MONEY", "number": 0,
+      "look": { "skin": "#eab08c", "hair": "#7a1f1f", "hairStyle": "cap", "beard": true, "height": 1.03 },
+      "bio": "Quiet for 39 minutes, then ruins your night",
+      "stats": { "shooting": 8, "dunking": 6, "handles": 5, "speed": 6, "defense": 6, "clutch": 10, "trashTalk": 4 },
+      "ability": "lock", "abilityName": "BUZZER BEATER",
+      "lines": ["It's never over. Ask my bookie.", "Backdoor cover incoming.", "I live for the last two minutes."],
+      "worstPick": "Cashed out early. It hit. He has not recovered.",
+      "beefs": ["steam"], "spot": "window"
+    }
+  ],
+  "roasts": [
+    { "a": "prof", "b": "unit", "lines": ["Statistically, you shoot worse than a blindfolded toddler.", "Statistically, I can pick you up with one hand.", "HAHAHA"] },
+    { "a": "chalk", "b": "square", "lines": ["You bet with your heart, Square.", "And you bet -900 with your rent.", "…that was ONE time."] },
+    { "a": "tout", "b": "sharpie", "lines": ["Tail me tonight, kid. Guaranteed.", "I'd rather tail the bartender.", "HAHAHA okay that hurt."] }
+  ],
+  "reactions": {
+    "afterWin": ["Okay {you}, I see you!", "Respect. Don't let it go to your giant head.", "Covered AND won? Who are you?"],
+    "afterLoss": ["Tough scene out there, {you}.", "HAHA I had the other side.", "Fade {you}. Free money."],
+    "afterBadBeat": ["Ohhh that one HURT. Bad beat city.", "I felt that slip rip from here.", "Moment of silence for {you}'s units."],
+    "night": ["Late games are the best games.", "West coast tip in ten. Who's got action?", "Sleep is for people who don't have the over."]
+  },
+  "ads": ["UNITS ARE FAKE", "THE BEEF IS REAL", "TAIL OR FADE", "HOOP LEGENDS", "LOCK OF THE NIGHT", "NO REAL MONEY"]
+}

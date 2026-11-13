@@ -1,0 +1,8 @@
+node_modules/
+dist/
+dist-real/
+real/
+# real photos and the real roster stay out of the public repo
+docs/faces/*.png
+docs/faces/*.jpg
+players.real.json
